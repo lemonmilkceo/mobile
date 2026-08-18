@@ -1,0 +1,112 @@
+name: Mobile E2E
+
+on:
+  pull_request:
+    paths:
+      - 'lib/**'
+      - 'integration_test/**'
+      - 'test/**'
+      - 'android/**'
+      - 'ios/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - '.github/workflows/mobile-e2e.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'lib/**'
+      - 'integration_test/**'
+      - 'test/**'
+      - 'android/**'
+      - 'ios/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - '.github/workflows/mobile-e2e.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android-mock-e2e:
+    name: Android mock E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      # secrets.local.dart is intentionally untracked. Mock mode never uses
+      # these values, but the compile-time import must exist.
+      - name: Create local config stub
+        run: cp lib/secrets.local.example.dart lib/secrets.local.dart
+
+      - name: Install Dart packages
+        run: flutter pub get
+
+      - name: Static analysis
+        # Existing lint findings are reported but do not block E2E adoption.
+        # Errors still fail this step.
+        run: flutter analyze --no-fatal-infos
+
+      - name: Run mock member journey on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_2
+          script: >-
+            flutter test integration_test/mock_member_journey_test.dart
+            -d emulator-5554
+            --dart-define=MOCK_MODE=true
+
+  ios-mock-e2e:
+    name: iOS mock E2E
+    runs-on: macos-latest
+    timeout-minutes: 35
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      # secrets.local.dart is intentionally untracked. Mock mode never uses
+      # these values, but the compile-time import must exist.
+      - name: Create local config stub
+        run: cp lib/secrets.local.example.dart lib/secrets.local.dart
+
+      - name: Install Dart packages
+        run: flutter pub get
+
+      - name: Select and boot an iPhone simulator
+        shell: bash
+        run: |
+          simulator_udid="$(xcrun simctl list devices available -j | jq -r '
+            .devices
+            | to_entries[]
+            | .value[]
+            | select(.isAvailable and (.name | startswith("iPhone")))
+            | .udid
+          ' | head -n 1)"
+          test -n "$simulator_udid"
+          echo "SIMULATOR_UDID=$simulator_udid" >> "$GITHUB_ENV"
+          xcrun simctl boot "$simulator_udid" || true
+          xcrun simctl bootstatus "$simulator_udid" -b
+
+      - name: Run mock member journey on iOS Simulator
+        run: >-
+          flutter test integration_test/mock_member_journey_test.dart
+          -d "$SIMULATOR_UDID"
+          --dart-define=MOCK_MODE=true
