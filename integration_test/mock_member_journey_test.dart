@@ -5,8 +5,10 @@ import 'package:integration_test/integration_test.dart';
 import 'package:baeandlee_app/main.dart' as app;
 
 Future<void> _waitFor(WidgetTester tester, Finder finder) async {
-  for (var attempt = 0; attempt < 20; attempt++) {
-    await tester.pump(const Duration(milliseconds: 250));
+  // A freshly provisioned iOS Simulator can take several seconds to finish
+  // app-link and shared-preferences initialization after the app is launched.
+  for (var attempt = 0; attempt < 60; attempt++) {
+    await tester.pump(const Duration(milliseconds: 500));
     if (finder.evaluate().isNotEmpty) return;
   }
   expect(finder, findsOneWidget);
