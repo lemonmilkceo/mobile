@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
+import 'package:baeandlee_app/config.dart';
 import 'package:baeandlee_app/main.dart' as app;
 
 Future<void> _waitFor(WidgetTester tester, Finder finder) async {
@@ -20,7 +21,8 @@ void main() {
   testWidgets(
     'mock member can browse a profile, request an introduction, and pause matching',
     (tester) async {
-      app.main();
+      expect(AppConfig.mockMode, isTrue);
+      await app.main();
 
       await _waitFor(tester, find.text('김XX'));
       expect(find.text('인물'), findsOneWidget);

@@ -71,10 +71,7 @@ Future<void> main() async {
   await session.push.initFirebaseIfEnabled();
 
   runApp(
-    ChangeNotifierProvider.value(
-      value: session,
-      child: const BaeAndLeeApp(),
-    ),
+    ChangeNotifierProvider.value(value: session, child: const BaeAndLeeApp()),
   );
 }
 
@@ -100,6 +97,16 @@ class _BaeAndLeeAppState extends State<BaeAndLeeApp> {
   }
 
   Future<void> _bootstrap() async {
+    if (AppConfig.mockMode) {
+      final session = context.read<AppSession>();
+      session.push.onOpenedInterest = _queueInterest;
+      setState(() {
+        _showOnboarding = false;
+        _bootstrapped = true;
+      });
+      return;
+    }
+
     await InviteCodeHold.loadFromLaunchExtras();
     await _deepLinks.logStartup();
     final initial = await _deepLinks.getInitialLink();
@@ -175,8 +182,7 @@ class _BaeAndLeeAppState extends State<BaeAndLeeApp> {
       ];
       for (final raw in all) {
         final row = Map<String, dynamic>.from(raw as Map);
-        if (row['share_token'] == token ||
-            row['male_contact_token'] == token) {
+        if (row['share_token'] == token || row['male_contact_token'] == token) {
           final id = row['id'] as String;
           _navKey.currentState?.push(
             MaterialPageRoute(
