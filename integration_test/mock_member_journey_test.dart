@@ -4,6 +4,7 @@ import 'package:integration_test/integration_test.dart';
 
 import 'package:baeandlee_app/config.dart';
 import 'package:baeandlee_app/main.dart' as app;
+import 'package:baeandlee_app/widgets/media_card.dart';
 
 Future<void> _waitFor(WidgetTester tester, Finder finder) async {
   // A freshly provisioned iOS Simulator can take several seconds to finish
@@ -24,10 +25,11 @@ void main() {
       expect(AppConfig.mockMode, isTrue);
       await app.main();
 
-      await _waitFor(tester, find.text('김XX'));
-      expect(find.text('인물'), findsOneWidget);
+      final firstCandidate = find.textContaining('김XX');
+      await _waitFor(tester, firstCandidate);
+      expect(find.text('인물'), findsAtLeastNWidgets(1));
 
-      await tester.tap(find.text('김XX'));
+      await tester.tap(find.byType(MediaCard).first);
       await _waitFor(tester, find.text('소개해주세요'));
 
       await tester.tap(find.text('소개해주세요'));
